@@ -33,10 +33,6 @@
  */
 //#define DEBUG
 
-I2C_HandleTypeDef *phi2c;
-DCMI_HandleTypeDef *phdcmi;
-UART_HandleTypeDef *phuart;
-
 const unsigned char OV2640_JPEG_INIT[][2] = { { 0xff, 0x00 }, { 0x2c, 0xff }, {
 		0x2e, 0xdf }, { 0xff, 0x01 }, { 0x3c, 0x32 }, { 0x11, 0x00 }, { 0x09,
 		0x02 }, { 0x04, 0x28 }, { 0x13, 0xe5 }, { 0x14, 0x48 }, { 0x2c, 0x0c },
@@ -276,23 +272,21 @@ const unsigned char OV2640_LIGHT_MODE_HOME[][2] = { { 0xff, 0x00 },
 
 /**
  * Camera initialization.
- * @param p_hi2c Pointer to I2C interface.
- * @param p_hdcmi Pointer to DCMI interface.
  */
-void OV2640_Init(I2C_HandleTypeDef *p_hi2c, DCMI_HandleTypeDef *p_hdcmi) {
-	phi2c = p_hi2c;
-	phdcmi = p_hdcmi;
+void OV2640_Init(void) {
+	// Init I2C
+	OV2640_I2CMasterInit();
 
 	// Hardware reset
-	HAL_GPIO_WritePin(CAMERA_RESET_GPIO_Port, CAMERA_RESET_Pin, GPIO_PIN_RESET);
-	HAL_Delay(100);
-	HAL_GPIO_WritePin(CAMERA_RESET_GPIO_Port, CAMERA_RESET_Pin, GPIO_PIN_SET);
-	HAL_Delay(100);
+	OV2640_GPIOResetPinWrite(0);
+	OV2640_DelayMs(100);
+	OV2640_GPIOResetPinWrite(1);
+	OV2640_DelayMs(100);
 
 	// Software reset: reset all registers to default values
 	SCCB_Write(0xff, 0x01);
 	SCCB_Write(0x12, 0x80);
-	HAL_Delay(100);
+	OV2640_DelayMs(100);
 
 #ifdef DEBUG
 	uint8_t pid;
@@ -301,9 +295,6 @@ void OV2640_Init(I2C_HandleTypeDef *p_hi2c, DCMI_HandleTypeDef *p_hdcmi) {
 	SCCB_Read(0x0b, &ver);  // ver value is 0x42
 	my_printf("PID: 0x%x, VER: 0x%x\n", pid, ver);
 #endif
-
-	// Stop DCMI clear buffer
-	OV2640_StopDCMI();
 }
 
 /**
@@ -348,9 +339,9 @@ void OV2640_ResolutionConfiguration(short opt) {
 	OV2640_Configuration(OV2640_JPEG_INIT);
 	OV2640_Configuration(OV2640_YUV422);
 	OV2640_Configuration(OV2640_JPEG);
-	HAL_Delay(10);
+	OV2640_DelayMs(10);
 	SCCB_Write(0xff, 0x01);
-	HAL_Delay(10);
+	OV2640_DelayMs(10);
 	SCCB_Write(0x15, 0x00);
 
 	switch (opt) {
@@ -400,7 +391,7 @@ void OV2640_Configuration(const unsigned char arr[][2]) {
 #ifdef DEBUG
 		my_printf("SCCB write: 0x%x 0x%x=>0x%x\r\n", reg_addr, data_read, data);
 #endif
-		HAL_Delay(10);
+		OV2640_DelayMs(10);
 		SCCB_Read(reg_addr, &data_read);
 		if (data != data_read) {
 #ifdef DEBUG
@@ -446,7 +437,7 @@ void OV2640_AdvancedWhiteBalance() {
 	my_printf("Enable simple white balance mode\r\n");
 #endif
 	SCCB_Write(0xff, 0x00);
-	HAL_Delay(1);
+	OV2640_DelayMs(1);
 	SCCB_Write(0xc7, 0x00);
 }
 
@@ -458,7 +449,7 @@ void OV2640_SimpleWhiteBalance() {
 	my_printf("Enable simple white balance mode\r\n");
 #endif
 	SCCB_Write(0xff, 0x00);
-	HAL_Delay(1);
+	OV2640_DelayMs(1);
 	SCCB_Write(0xc7, 0x10);
 }
 
@@ -550,29 +541,6 @@ void OV2640_Contrast(short contrast) {
 }
 
 /**
- * Stop DCMI (Clear  memory buffer)
- */
-void OV2640_StopDCMI(void) {
-#ifdef DEBUG
-	my_printf("DCMI has been stopped \r\n");
-#endif
-	HAL_DCMI_Stop(phdcmi);
-	HAL_Delay(10); // If you get a DCMI error (data is not received), increase value to 30.
-}
-
-/**
- * Executes a single reading from DCMI and returns  data as an image.
- * @param frameBuffer Table with data.
- * @param length Length of capture to be transferred.
- */
-void OV2640_CaptureSnapshot(uint32_t frameBuffer, int length) {
-	HAL_DCMI_Start_DMA(phdcmi, DCMI_MODE_SNAPSHOT, frameBuffer, length);
-	HAL_Delay(2000);
-	HAL_DCMI_Suspend(phdcmi);
-	HAL_DCMI_Stop(phdcmi);
-}
-
-/**
  * Write value to camera register.
  * @param reg_addr Address of register.
  * @param data New value.
@@ -581,18 +549,17 @@ void OV2640_CaptureSnapshot(uint32_t frameBuffer, int length) {
 short SCCB_Write(uint8_t reg_addr, uint8_t data) {
 	short opertionStatus = 0;
 	uint8_t buffer[2] = { 0 };
-	HAL_StatusTypeDef connectionStatus;
+	int connectionStatus;
 	buffer[0] = reg_addr;
 	buffer[1] = data;
-	__disable_irq();
-	connectionStatus = HAL_I2C_Master_Transmit(phi2c, (uint16_t) 0x60, buffer,
-			2, 100);
-	if (connectionStatus == HAL_OK) {
+//	__disable_irq();
+	connectionStatus = OV2640_I2CMasterTransmit((uint16_t) 0x60, buffer, 2, 100);
+	if (connectionStatus == 0) {
 		opertionStatus = 1;
 	} else {
 		opertionStatus = 0;
 	}
-	__enable_irq();
+//	__enable_irq();
 	return opertionStatus;
 }
 
@@ -604,14 +571,12 @@ short SCCB_Write(uint8_t reg_addr, uint8_t data) {
  */
 short SCCB_Read(uint8_t reg_addr, uint8_t *pdata) {
 	short opertionStatus = 0;
-	HAL_StatusTypeDef connectionStatus;
-	__disable_irq();
-	connectionStatus = HAL_I2C_Master_Transmit(phi2c, (uint16_t) 0x60,
-			&reg_addr, 1, 100);
-	if (connectionStatus == HAL_OK) {
-		connectionStatus = HAL_I2C_Master_Receive(phi2c, (uint16_t) 0x61, pdata,
-				1, 100);
-		if (connectionStatus == HAL_OK) {
+	int connectionStatus;
+//	__disable_irq();
+	connectionStatus = OV2640_I2CMasterTransmit((uint16_t) 0x60, &reg_addr, 1, 100);
+	if (connectionStatus == 0) {
+		connectionStatus = OV2640_I2CMasterReceive((uint16_t) 0x61, pdata, 1, 100);
+		if (connectionStatus == 0) {
 			opertionStatus = 0;
 		} else {
 			opertionStatus = 1;
@@ -619,6 +584,6 @@ short SCCB_Read(uint8_t reg_addr, uint8_t *pdata) {
 	} else {
 		opertionStatus = 2;
 	}
-	__enable_irq();
+//	__enable_irq();
 	return opertionStatus;
 }

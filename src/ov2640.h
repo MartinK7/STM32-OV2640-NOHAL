@@ -29,10 +29,7 @@
 #ifndef OV2640_H_
 #define OV2640_H_
 
-#include "main.h"
-#include "stm32f7xx.h"
-
-
+#include <stdint.h>
 
 enum specialEffect{Antique=0, Bluish=1, Greenish=2, Reddish=3, BlackWhite=4, Negative=5, NegativeBlackWhite=6,Normal=7};
 enum imageResolution{RES_160X120=15533,RES_320X240=15534,RES_640X480=15535,RES_800x600=25535,RES_1024x768=45535,RES_1280x960=65535};
@@ -44,12 +41,15 @@ enum imageLightMode{Auto=0,Sunny=1,Cloudy=2,Office=3,Home=4};
 short SCCB_Read(uint8_t reg_addr, uint8_t *pdata);
 short SCCB_Write(uint8_t reg_addr, uint8_t data);
 
+extern void OV2640_GPIOResetPinWrite(uint8_t value);
+extern void OV2640_DelayMs(uint32_t DelayMs);
+extern int OV2640_I2CMasterInit(void);
+extern int OV2640_I2CMasterTransmit(uint16_t DevAddress, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+extern int OV2640_I2CMasterReceive(uint16_t DevAddress, uint8_t *pData, uint16_t Size, uint32_t Timeout);
 
-void OV2640_StopDCMI(void);
-void OV2640_CaptureSnapshot(uint32_t buf_addr, int len);
 void OV2640_ResolutionOptions(uint16_t opt);
 void OV2640_ResolutionConfiguration(short opt);
-void OV2640_Init(I2C_HandleTypeDef *p_hi2c, DCMI_HandleTypeDef *p_hdcmi);
+void OV2640_Init(void);
 void OV2640_Configuration(const unsigned char  arr[][2]);
 void OV2640_SpecialEffect(short specialEffect);
 void OV2640_Contrast(short contrast);
