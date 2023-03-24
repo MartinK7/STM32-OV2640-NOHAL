@@ -31,7 +31,11 @@
 /**
  * Code debugging option
  */
-//#define DEBUG
+#define DEBUG
+
+#ifdef DEBUG
+	#include <stdio.h>
+#endif
 
 const unsigned char OV2640_JPEG_INIT[][2] = { { 0xff, 0x00 }, { 0x2c, 0xff }, {
 		0x2e, 0xdf }, { 0xff, 0x01 }, { 0x3c, 0x32 }, { 0x11, 0x00 }, { 0x09,
@@ -293,7 +297,7 @@ void OV2640_Init(void) {
 	uint8_t ver;
 	SCCB_Read(0x0a, &pid);  // pid value is 0x26
 	SCCB_Read(0x0b, &ver);  // ver value is 0x42
-	my_printf("PID: 0x%x, VER: 0x%x\n", pid, ver);
+	printf("PID: 0x%x, VER: 0x%x\n", pid, ver);
 #endif
 }
 
@@ -334,7 +338,7 @@ void OV2640_ResolutionOptions(uint16_t opt) {
  */
 void OV2640_ResolutionConfiguration(short opt) {
 #ifdef DEBUG
-	my_printf("Starting resolution choice \r\n");
+	printf("Starting resolution choice \r\n");
 #endif
 	OV2640_Configuration(OV2640_JPEG_INIT);
 	OV2640_Configuration(OV2640_YUV422);
@@ -369,7 +373,7 @@ void OV2640_ResolutionConfiguration(short opt) {
 	}
 
 #ifdef DEBUG
-	my_printf("Finalize configuration \r\n");
+	printf("Finalize configuration \r\n");
 #endif
 }
 
@@ -389,13 +393,13 @@ void OV2640_Configuration(const unsigned char arr[][2]) {
 		SCCB_Read(reg_addr, &data_read);
 		SCCB_Write(reg_addr, data);
 #ifdef DEBUG
-		my_printf("SCCB write: 0x%x 0x%x=>0x%x\r\n", reg_addr, data_read, data);
+		printf("SCCB write: 0x%x 0x%x=>0x%x\r\n", reg_addr, data_read, data);
 #endif
 		OV2640_DelayMs(10);
 		SCCB_Read(reg_addr, &data_read);
 		if (data != data_read) {
 #ifdef DEBUG
-			my_printf("SCCB write failure: 0x%x 0x%x\r\n", reg_addr, data_read);
+			printf("SCCB write failure: 0x%x 0x%x\r\n", reg_addr, data_read);
 #endif
 		}
 		i++;
@@ -408,7 +412,7 @@ void OV2640_Configuration(const unsigned char arr[][2]) {
  */
 void OV2640_SpecialEffect(short specialEffect) {
 #ifdef DEBUG
-	my_printf("Special effect value:%d\r\n", specialEffect);
+	printf("Special effect value:%d\r\n", specialEffect);
 #endif
 	if (specialEffect == 0) {
 		OV2640_Configuration(OV2640_SPECIAL_EFFECTS_ANTIQUE);
@@ -434,7 +438,7 @@ void OV2640_SpecialEffect(short specialEffect) {
  */
 void OV2640_AdvancedWhiteBalance() {
 #ifdef DEBUG
-	my_printf("Enable simple white balance mode\r\n");
+	printf("Enable simple white balance mode\r\n");
 #endif
 	SCCB_Write(0xff, 0x00);
 	OV2640_DelayMs(1);
@@ -446,7 +450,7 @@ void OV2640_AdvancedWhiteBalance() {
  */
 void OV2640_SimpleWhiteBalance() {
 #ifdef DEBUG
-	my_printf("Enable simple white balance mode\r\n");
+	printf("Enable simple white balance mode\r\n");
 #endif
 	SCCB_Write(0xff, 0x00);
 	OV2640_DelayMs(1);
@@ -459,7 +463,7 @@ void OV2640_SimpleWhiteBalance() {
  */
 void OV2640_Brightness(short brightness) {
 #ifdef DEBUG
-	my_printf("Brightness value:%d\r\n", brightness);
+	printf("Brightness value:%d\r\n", brightness);
 #endif
 
 	if (brightness == 0) {
@@ -481,7 +485,7 @@ void OV2640_Brightness(short brightness) {
  */
 void OV2640_LightMode(short lightMode) {
 #ifdef DEBUG
-	my_printf("Light mode value:%d\r\n", lightMode);
+	printf("Light mode value:%d\r\n", lightMode);
 #endif
 
 	if (lightMode == 0) {
@@ -502,7 +506,7 @@ void OV2640_LightMode(short lightMode) {
  */
 void OV2640_Saturation(short saturation) {
 #ifdef DEBUG
-	my_printf("Saturation value:%d\r\n", saturation);
+	printf("Saturation value:%d\r\n", saturation);
 #endif
 
 	if (saturation == 0) {
@@ -524,7 +528,7 @@ void OV2640_Saturation(short saturation) {
  */
 void OV2640_Contrast(short contrast) {
 #ifdef DEBUG
-	my_printf("Contrast value:%d\r\n", contrast);
+	printf("Contrast value:%d\r\n", contrast);
 #endif
 
 	if (contrast == 0) {
